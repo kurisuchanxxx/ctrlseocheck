@@ -1,25 +1,54 @@
-# SEO Audit Tool - Analisi SEO Automatica per PMI Locali
+# 🚀 CtrlSEOCheck - SEO Audit Tool Completo per PMI Locali
 
-Applicazione web completa per l'analisi SEO automatica di siti web di PMI locali, con dashboard interattiva, report PDF e sistema di scoring avanzato.
+> **FIRST-MOVER**: Include analisi AEO/RAO (Answer Engine Optimization) per ottimizzare contenuti per AI e motori di risposta (ChatGPT, Claude, Perplexity, Google AI Overview)
 
-## 🚀 Caratteristiche
+Tool professionale per analisi SEO automatica di siti web di PMI italiane, con integrazione PageSpeed Insights API (mobile + desktop) e analisi AEO/RAO esclusiva. Dashboard interattiva, report PDF brandizzabile e sistema di scoring avanzato con raccomandazioni dettagliate.
 
-- **Analisi Technical SEO**: SSL, velocità, mobile-friendliness, sitemap, robots.txt
-- **Analisi On-Page SEO**: Meta tags, heading structure, immagini, contenuti
-- **Analisi Local SEO**: NAP consistency, schema markup locale, menzioni località
-- **Analisi Off-Page SEO**: Backlinks stimati, directory listings, domain authority
+## ✨ Caratteristiche Principali
+
+### 🔧 Analisi SEO Completa
+- **Technical SEO**: SSL, velocità, mobile-friendliness, sitemap, robots.txt
+- **On-Page SEO**: Meta tags, heading structure, immagini, contenuti
+- **Local SEO**: NAP consistency, schema markup locale, menzioni località (ottimizzato per PMI italiane)
+- **Off-Page SEO**: Backlinks stimati, directory listings, domain authority
 - **Analisi Competitor**: Confronto comparativo con fino a 3 competitor
+
+### ⚡ PageSpeed Insights Integration
+- **Metriche reali Google API**: Performance, Accessibility, Best Practices, SEO
+- **Core Web Vitals**: LCP, CLS, TBT, FCP per mobile e desktop
+- **Analisi separata**: Metriche diverse per dispositivi mobili e computer (come PageSpeed Insights ufficiale)
+
+### 🤖 AEO/RAO - Answer Engine Optimization (FIRST-MOVER)
+- **Struttura Q&A**: Analisi formato domanda-risposta per AI
+- **Schema Markup AEO**: FAQ, HowTo, Article per motori di risposta
+- **Contenuti Citabili**: Statistiche, fonti, paragrafi snippet-ready
+- **Ottimizzazione Semantica**: Topic depth, link interni, domande correlate
+- **Formato e Leggibilità**: Analisi lunghezza frasi, paragrafi, keyword evidenziate
+- **Autorevolezza**: Valutazione contenuti per citazioni AI
+
+### 📊 Dashboard e Report
 - **Sistema di Scoring**: Punteggio 0-100 con breakdown per categoria
-- **Raccomandazioni Actionable**: Suggerimenti prioritizzati con istruzioni step-by-step
-- **Report PDF**: Export professionale brandizzabile
+- **Raccomandazioni Dettagliate**: Suggerimenti prioritizzati con:
+  - Esempi di codice HTML/CSS/JS
+  - Link a risorse utili
+  - Metriche specifiche (attuale vs target)
+  - Stima tempo implementazione e difficoltà
+- **Report PDF**: Export professionale brandizzato Ctrl Studio
 - **Storico Analisi**: Salvataggio e confronto evolutivo
-- **✨ PageSpeed Insights Integration**: Metriche reali Core Web Vitals e performance avanzate
+- **Quick Wins**: Sezione dedicata per miglioramenti rapidi
+
+## 🛠️ Stack Tecnologico
+
+- **Frontend**: React 18+ + TypeScript + Tailwind CSS + Recharts + jsPDF
+- **Backend**: Node.js + Express + TypeScript + Cheerio + SQLite
+- **API**: Google PageSpeed Insights API v5
+- **Build Tools**: Vite, Nodemon, TypeScript
 
 ## 📋 Prerequisiti
 
 - Node.js 18+ 
 - npm o yarn
-- (Opzionale) Google Cloud API Key per PageSpeed Insights
+- (Opzionale) Google Cloud API Key per PageSpeed Insights ([Guida setup](./backend/SETUP_PAGESPEED.md))
 
 ## 🛠️ Installazione
 
