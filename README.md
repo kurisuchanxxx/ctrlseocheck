@@ -165,7 +165,7 @@ seo-audit-app/
 
 ## 🔍 Cosa Analizza
 
-### Technical SEO (30 punti)
+### Technical SEO (25 punti)
 - Certificato SSL e scadenza
 - **Velocità di caricamento (PageSpeed Insights se configurato)**
 - **Core Web Vitals: LCP, CLS, TBT, FCP**
@@ -175,7 +175,7 @@ seo-audit-app/
 - Link rotti
 - **Ottimizzazioni risorse (render-blocking, compressione, immagini)**
 
-### On-Page SEO (30 punti)
+### On-Page SEO (25 punti)
 - Meta title e description
 - Heading structure (H1, H2, H3)
 - Immagini senza alt text
@@ -183,7 +183,7 @@ seo-audit-app/
 - Canonical tags
 - Schema markup
 
-### Local SEO (25 punti)
+### Local SEO (20 punti)
 - Dati NAP (Name, Address, Phone)
 - Consistenza NAP
 - Schema markup locale (LocalBusiness)
@@ -191,7 +191,15 @@ seo-audit-app/
 - Pagine dedicate alle località
 - Google Business Profile
 
-### Off-Page SEO (15 punti)
+### Off-Page SEO (10 punti)
+
+### AEO/RAO - Answer Engine Optimization (20 punti) - FIRST-MOVER
+- Struttura domanda-risposta (Q&A)
+- Schema markup per AI (FAQ, HowTo, Article)
+- Contenuti citabili (statistiche, fonti, snippet-ready)
+- Ottimizzazione semantica (topic depth, link interni, domande correlate)
+- Formato e leggibilità (lunghezza frasi, paragrafi, keyword evidenziate)
+- Autorevolezza (lunghezza contenuto, freshness, struttura heading)
 - Backlinks stimati
 - Directory listings
 - Domain Authority
@@ -199,14 +207,17 @@ seo-audit-app/
 ## 📊 Sistema di Scoring
 
 Il punteggio totale (0-100) è calcolato come:
-- **Technical SEO**: 30 punti (con Core Web Vitals se PageSpeed disponibile)
-- **On-Page SEO**: 30 punti
-- **Local SEO**: 25 punti
-- **Off-Page SEO**: 15 punti
+- **Technical SEO**: 25 punti (con Core Web Vitals se PageSpeed disponibile)
+- **On-Page SEO**: 25 punti
+- **Local SEO**: 20 punti
+- **Off-Page SEO**: 10 punti
+- **AEO/RAO**: 20 punti (FIRST-MOVER - analisi esclusiva)
 
-**Con PageSpeed Insights**: Lo score Technical SEO usa Core Web Vitals reali (LCP, CLS, TBT, FCP) con pesi ottimizzati.
+**Con PageSpeed Insights**: Lo score Technical SEO usa Core Web Vitals reali (LCP, CLS, TBT, FCP) con pesi ottimizzati. Le metriche sono separate per mobile e desktop.
 
 **Senza PageSpeed**: Usa metriche stimate basate su tempo di caricamento HTML.
+
+**AEO/RAO**: Valuta struttura Q&A, schema markup per AI, contenuti citabili, ottimizzazione semantica, formato e leggibilità, e autorevolezza del dominio.
 
 ## 🎨 Design
 
@@ -309,7 +320,9 @@ Contributi benvenuti! Apri una issue o una pull request.
 
 ## 🔮 Roadmap
 
-- [x] Integrazione PageSpeed Insights API
+- [x] Integrazione PageSpeed Insights API (mobile + desktop)
+- [x] Analisi AEO/RAO (Answer Engine Optimization) - FIRST-MOVER
+- [x] Distinzione chiara PageSpeed Insights vs Analisi Custom
 - [ ] Supporto multi-lingua
 - [ ] Dark mode
 - [ ] Export Excel/CSV
