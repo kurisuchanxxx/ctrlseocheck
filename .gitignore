@@ -41,3 +41,15 @@ Thumbs.db
 .npm/
 .eslintcache
 
+# Screenshots (potrebbero contenere informazioni sensibili)
+*.png
+*.jpg
+*.jpeg
+!**/public/**/*.png
+!**/public/**/*.jpg
+!**/public/**/*.jpeg
+!**/assets/**/*.png
+!**/assets/**/*.jpg
+!**/assets/**/*.jpeg
+Screenshot*.png
+

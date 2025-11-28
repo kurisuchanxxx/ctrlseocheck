@@ -253,41 +253,65 @@ export function transformToFrontendFormat(backendResult: AnalysisResult): Fronte
     directoryListings: backendResult.offPage.directoryListings,
   };
 
+  // Gestisci analisi vecchie senza campo AEO
+  const aeoData = backendResult.aeo || {
+    hasQaStructure: false,
+    qaSections: 0,
+    hasFaqSchema: false,
+    hasHowToSchema: false,
+    hasArticleSchema: false,
+    structuredDataTypes: [],
+    hasStatistics: false,
+    hasSources: false,
+    snippetReadyContent: 0,
+    topicDepth: 0,
+    semanticKeywords: 0,
+    internalLinks: 0,
+    relatedQuestions: 0,
+    averageSentenceLength: 0,
+    averageParagraphLength: 0,
+    boldKeywords: 0,
+    hasBulletLists: false,
+    contentLength: 0,
+    contentFreshness: 30,
+    headingStructure: false,
+  };
+
   const aeo: AeoSEO = {
     score: Math.round(
       backendResult.scoring.categories.find((c) => c.label === 'AEO/RAO')?.score || 0
     ),
     qaStructure: {
-      present: backendResult.aeo.hasQaStructure,
-      sections: backendResult.aeo.qaSections,
+      present: aeoData.hasQaStructure,
+      sections: aeoData.qaSections,
     },
     schema: {
-      faq: backendResult.aeo.hasFaqSchema,
-      howTo: backendResult.aeo.hasHowToSchema,
-      article: backendResult.aeo.hasArticleSchema,
-      types: backendResult.aeo.structuredDataTypes,
+      faq: aeoData.hasFaqSchema,
+      howTo: aeoData.hasHowToSchema,
+      article: aeoData.hasArticleSchema,
+      types: aeoData.structuredDataTypes || [],
     },
     citability: {
-      statistics: backendResult.aeo.hasStatistics,
-      sources: backendResult.aeo.hasSources,
-      snippetReady: backendResult.aeo.snippetReadyContent,
+      statistics: aeoData.hasStatistics,
+      sources: aeoData.hasSources,
+      snippetReady: aeoData.snippetReadyContent,
     },
     semantic: {
-      topicDepth: backendResult.aeo.topicDepth,
-      keywords: backendResult.aeo.semanticKeywords,
-      internalLinks: backendResult.aeo.internalLinks,
-      questions: backendResult.aeo.relatedQuestions,
+      topicDepth: aeoData.topicDepth,
+      keywords: aeoData.semanticKeywords,
+      internalLinks: aeoData.internalLinks,
+      questions: aeoData.relatedQuestions,
     },
     readability: {
-      avgSentenceLength: backendResult.aeo.averageSentenceLength,
-      avgParagraphLength: backendResult.aeo.averageParagraphLength,
-      boldKeywords: backendResult.aeo.boldKeywords,
-      hasLists: backendResult.aeo.hasBulletLists,
+      avgSentenceLength: aeoData.averageSentenceLength,
+      avgParagraphLength: aeoData.averageParagraphLength,
+      boldKeywords: aeoData.boldKeywords,
+      hasLists: aeoData.hasBulletLists,
     },
     authority: {
-      contentLength: backendResult.aeo.contentLength,
-      freshness: backendResult.aeo.contentFreshness,
-      headingStructure: backendResult.aeo.headingStructure,
+      contentLength: aeoData.contentLength,
+      freshness: aeoData.contentFreshness,
+      headingStructure: aeoData.headingStructure,
     },
   };
 

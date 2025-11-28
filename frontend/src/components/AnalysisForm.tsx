@@ -130,7 +130,7 @@ export default function AnalysisForm({ onSubmit, isLoading }: AnalysisFormProps)
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-primary text-white py-3 px-6 rounded-md font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full bg-blue-600 text-white py-3 px-6 rounded-md font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isLoading ? 'Analisi in corso...' : 'Avvia Analisi'}
       </button>

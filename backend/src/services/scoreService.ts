@@ -91,18 +91,88 @@ export const buildScoring = (inputs: ScoreInputs): ScoringBreakdown => {
       1 - (inputs.onPage.brokenInternalLinks + inputs.onPage.brokenExternalLinks) / 10
     );
 
+  // Local SEO migliorato: più generoso e considera anche dati parziali NAP
+  const napScore = inputs.local.napConsistency 
+    ? 1.0 
+    : (inputs.local.napDetails.name ? 0.4 : 0) + 
+      (inputs.local.napDetails.address ? 0.3 : 0) + 
+      (inputs.local.napDetails.phone ? 0.3 : 0); // Dati parziali NAP
+  
   const localScore =
-    0.3 * Number(inputs.local.napConsistency) +
-    0.2 * Number(inputs.local.mentionsLocation) +
+    0.30 * napScore +
     0.25 * Number(inputs.local.hasLocalSchema) +
+    0.20 * Number(inputs.local.mentionsLocation) +
     0.15 * Number(inputs.local.hasLocalPages) +
-    0.1 * Number(Boolean(inputs.local.googleBusinessProfileUrl));
+    0.10 * Number(Boolean(inputs.local.googleBusinessProfileUrl));
 
+  // Migliorato: Off-Page score più generoso
+  // Domain Authority: 25-70 -> normalizzato a 0-1 (range più realistico per PMI)
+  const domainAuthScore = clamp((inputs.offPage.domainAuthorityScore - 25) / 45, 0, 1);
+  // Backlinks: 30-150 -> normalizzato (target 60+ per buon punteggio)
+  const backlinksScore = clamp(inputs.offPage.estimatedBacklinks / 60, 0, 1);
+  // Directory listings: 8-35 -> normalizzato (target 15+ per buon punteggio)
+  const directoryScore = clamp(inputs.offPage.directoryListings / 20, 0, 1);
+  
   const offPageScore =
-    0.4 * clamp(inputs.offPage.domainAuthorityScore / 100) +
-    0.2 * clamp(inputs.offPage.estimatedBacklinks / 100) +
-    0.2 * clamp(inputs.offPage.directoryListings / 50) +
-    0.2 * Number(inputs.offPage.hasGoogleBusinessProfile);
+    0.35 * domainAuthScore +
+    0.25 * backlinksScore +
+    0.20 * directoryScore +
+    0.20 * Number(inputs.offPage.hasGoogleBusinessProfile);
+
+  // Calcolo score AEO/RAO (MANCANTE - BUG CRITICO!)
+  // 1. Struttura Q&A (20%)
+  const qaScore = inputs.aeo.hasQaStructure 
+    ? 1.0 
+    : clamp(inputs.aeo.qaSections / 3, 0, 0.7); // Se non ha struttura ma ha sezioni Q&A
+  
+  // 2. Schema markup per AI (25%)
+  const schemaScore = (
+    (inputs.aeo.hasFaqSchema ? 0.4 : 0) +
+    (inputs.aeo.hasHowToSchema ? 0.3 : 0) +
+    (inputs.aeo.hasArticleSchema ? 0.2 : 0) +
+    (inputs.aeo.entityMarkup ? 0.1 : 0)
+  );
+  
+  // 3. Contenuti citabili (20%)
+  const citableScore = (
+    (inputs.aeo.hasStatistics ? 0.3 : 0) +
+    (inputs.aeo.hasSources ? 0.3 : 0) +
+    clamp(inputs.aeo.snippetReadyContent / 5, 0, 0.4) // Target: 5+ paragrafi snippet-ready
+  );
+  
+  // 4. Ottimizzazione semantica (15%)
+  const semanticScore = (
+    clamp(inputs.aeo.topicDepth / 20, 0, 0.4) + // Target: 20+ topic depth
+    clamp(inputs.aeo.semanticKeywords / 10, 0, 0.3) + // Target: 10+ keyword semantiche
+    clamp(inputs.aeo.internalLinks / 10, 0, 0.2) + // Target: 10+ link interni
+    clamp(inputs.aeo.relatedQuestions / 5, 0, 0.1) // Target: 5+ domande correlate
+  );
+  
+  // 5. Formato e leggibilità (10%)
+  const readabilityScore = (
+    (inputs.aeo.averageSentenceLength > 0 && inputs.aeo.averageSentenceLength <= 20 ? 0.3 : 0) +
+    (inputs.aeo.averageParagraphLength > 0 && inputs.aeo.averageParagraphLength <= 4 ? 0.3 : 0) +
+    clamp(inputs.aeo.boldKeywords / 5, 0, 0.2) + // Target: 5+ keyword in grassetto
+    (inputs.aeo.hasBulletLists ? 0.2 : 0)
+  );
+  
+  // 6. Autorevolezza (10%)
+  const authorityScore = (
+    (inputs.aeo.contentLength >= 500 ? 0.4 : clamp(inputs.aeo.contentLength / 500, 0, 0.4)) +
+    (inputs.aeo.headingStructure ? 0.3 : 0) +
+    (inputs.aeo.contentFreshness <= 90 ? 0.3 : clamp(1 - (inputs.aeo.contentFreshness - 90) / 365, 0, 0.3))
+  );
+  
+  const aeoScore = clamp(
+    0.20 * qaScore +
+    0.25 * schemaScore +
+    0.20 * citableScore +
+    0.15 * semanticScore +
+    0.10 * readabilityScore +
+    0.10 * authorityScore,
+    0,
+    1
+  );
 
   const categories = [
     {
@@ -128,6 +198,12 @@ export const buildScoring = (inputs: ScoreInputs): ScoringBreakdown => {
       score: Math.round(offPageScore * CATEGORY_WEIGHTS.offPage.max),
       weight: CATEGORY_WEIGHTS.offPage.weight,
       max: CATEGORY_WEIGHTS.offPage.max,
+    },
+    {
+      label: "AEO/RAO",
+      score: Math.round(aeoScore * CATEGORY_WEIGHTS.aeo.max),
+      weight: CATEGORY_WEIGHTS.aeo.weight,
+      max: CATEGORY_WEIGHTS.aeo.max,
     },
   ];
 

@@ -99,11 +99,6 @@ function App() {
               <span className="text-sm text-gray-500">by Ctrl Studio</span>
             </div>
             <div className="flex items-center gap-4">
-              <img 
-                src="/ctrl-studio-logo.svg" 
-                alt="Ctrl Studio" 
-                className="h-10 w-auto"
-              />
               <div className="flex gap-4">
                 <button
                   onClick={() => setShowHistory(!showHistory)}
@@ -114,7 +109,7 @@ function App() {
                 {currentAnalysis && (
                   <button
                     onClick={handleGeneratePDF}
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-gray-800 transition-colors"
                   >
                     Genera PDF
                   </button>

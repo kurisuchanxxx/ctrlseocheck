@@ -8,15 +8,25 @@ const seededRandom = (seed: string) => {
 
 export const simulateOffPageSignals = (url: string): OffPageSeoMetrics => {
   const baseRandom = seededRandom(url);
-  const domainAuthorityScore = Math.round(15 + baseRandom * 60);
-  const estimatedBacklinks = Math.round(20 + baseRandom * 200);
-  const directoryListings = Math.round(5 + baseRandom * 40);
+  
+  // Valori più generosi e realistici per PMI locali
+  // Domain Authority: range 25-70 (più generoso, PMI locali tipicamente 30-50)
+  const domainAuthorityScore = Math.round(25 + baseRandom * 45);
+  
+  // Backlinks: range 30-150 (più generoso, PMI locali tipicamente 50-100)
+  const estimatedBacklinks = Math.round(30 + baseRandom * 120);
+  
+  // Directory listings: range 8-35 (più generoso, PMI locali tipicamente 10-25)
+  const directoryListings = Math.round(8 + baseRandom * 27);
+  
+  // Google Business Profile: più probabile (70% invece di 65%)
+  const hasGoogleBusinessProfile = baseRandom > 0.30;
 
   return {
     estimatedBacklinks,
     directoryListings,
     domainAuthorityScore,
-    hasGoogleBusinessProfile: baseRandom > 0.35,
+    hasGoogleBusinessProfile,
   };
 };
 

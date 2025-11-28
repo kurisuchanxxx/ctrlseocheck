@@ -54,169 +54,221 @@ export default function RecommendationsList({ recommendations }: Recommendations
     }
   };
 
-  const sortedRecs = [...recommendations].sort((a, b) => {
-    const priorityOrder = { high: 3, medium: 2, low: 1 };
-    return priorityOrder[b.priority] - priorityOrder[a.priority];
+  // Raggruppa per categoria
+  const groupedByCategory = recommendations.reduce((acc, rec) => {
+    const category = rec.category || 'onPage';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(rec);
+    return acc;
+  }, {} as Record<string, typeof recommendations>);
+
+  // Ordina le categorie
+  const categoryOrder = ['technical', 'onPage', 'local', 'offPage', 'aeo'];
+  const sortedCategories = Object.keys(groupedByCategory).sort((a, b) => {
+    const aIndex = categoryOrder.indexOf(a);
+    const bIndex = categoryOrder.indexOf(b);
+    return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
   });
 
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      technical: 'Technical SEO',
+      onPage: 'On-Page SEO',
+      local: 'Local SEO',
+      offPage: 'Off-Page SEO',
+      aeo: 'AEO/RAO',
+    };
+    return labels[category] || category;
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      technical: 'bg-blue-50 border-blue-200',
+      onPage: 'bg-green-50 border-green-200',
+      local: 'bg-purple-50 border-purple-200',
+      offPage: 'bg-orange-50 border-orange-200',
+      aeo: 'bg-indigo-50 border-indigo-200',
+    };
+    return colors[category] || 'bg-gray-50 border-gray-200';
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h3 className="text-xl font-bold text-dark mb-4">Raccomandazioni Dettagliate</h3>
-      {sortedRecs.map((rec) => {
-        const isExpanded = expandedRecs.has(rec.id);
-        const hasDetails = rec.codeExamples || rec.resources || rec.metrics || rec.difficulty || rec.estimatedTime;
-        
+      
+      {sortedCategories.map((category) => {
+        const categoryRecs = groupedByCategory[category].sort((a, b) => {
+          const priorityOrder = { high: 3, medium: 2, low: 1 };
+          return priorityOrder[b.priority] - priorityOrder[a.priority];
+        });
+
         return (
-          <div
-            key={rec.id}
-            className={`border-l-4 rounded-lg p-6 ${getPriorityColor(rec.priority)} transition-all`}
-          >
-            <div className="flex items-start gap-3">
-              {getPriorityIcon(rec.priority)}
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-semibold text-dark text-lg">{rec.title}</h4>
-                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      rec.priority === 'high' ? 'bg-red-200 text-red-800' :
-                      rec.priority === 'medium' ? 'bg-yellow-200 text-yellow-800' :
-                      'bg-green-200 text-green-800'
-                    }`}>
-                      {rec.priority === 'high' ? 'Alta' : rec.priority === 'medium' ? 'Media' : 'Bassa'}
-                    </span>
-                    {rec.difficulty && (
-                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${getDifficultyColor(rec.difficulty)}`}>
-                        {rec.difficulty === 'facile' ? '⚡ Facile' : rec.difficulty === 'media' ? '🔧 Media' : '⚙️ Avanzata'}
-                      </span>
-                    )}
-                    {rec.estimatedTime && (
-                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-medium flex items-center gap-1">
-                        <ClockIcon className="h-3 w-3" />
-                        {rec.estimatedTime}
-                      </span>
-                    )}
-                  </div>
-                  {hasDetails && (
-                    <button
-                      onClick={() => toggleExpand(rec.id)}
-                      className="text-primary hover:text-blue-700 text-sm font-medium"
-                    >
-                      {isExpanded ? 'Nascondi dettagli' : 'Mostra dettagli'}
-                    </button>
-                  )}
-                </div>
+          <div key={category} className={`rounded-lg border-2 p-4 ${getCategoryColor(category)}`}>
+            <h4 className="text-lg font-bold text-dark mb-4 pb-2 border-b border-gray-300">
+              {getCategoryLabel(category)} ({categoryRecs.length} raccomandazione{categoryRecs.length !== 1 ? 'i' : ''})
+            </h4>
+            <div className="space-y-4">
+              {categoryRecs.map((rec) => {
+                const isExpanded = expandedRecs.has(rec.id);
+                const hasDetails = rec.codeExamples || rec.resources || rec.metrics || rec.difficulty || rec.estimatedTime;
                 
-                <p className="text-gray-700 mb-4 leading-relaxed">{rec.description}</p>
+                return (
+                  <div
+                    key={rec.id}
+                    className={`border-l-4 rounded-lg p-6 ${getPriorityColor(rec.priority)} transition-all`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {getPriorityIcon(rec.priority)}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-dark text-lg">{rec.title}</h4>
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                              rec.priority === 'high' ? 'bg-red-200 text-red-800' :
+                              rec.priority === 'medium' ? 'bg-yellow-200 text-yellow-800' :
+                              'bg-green-200 text-green-800'
+                            }`}>
+                              {rec.priority === 'high' ? 'Alta' : rec.priority === 'medium' ? 'Media' : 'Bassa'}
+                            </span>
+                            {rec.difficulty && (
+                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${getDifficultyColor(rec.difficulty)}`}>
+                                {rec.difficulty === 'facile' ? '⚡ Facile' : rec.difficulty === 'media' ? '🔧 Media' : '⚙️ Avanzata'}
+                              </span>
+                            )}
+                            {rec.estimatedTime && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-medium flex items-center gap-1">
+                                <ClockIcon className="h-3 w-3" />
+                                {rec.estimatedTime}
+                              </span>
+                            )}
+                          </div>
+                          {hasDetails && (
+                            <button
+                              onClick={() => toggleExpand(rec.id)}
+                              className="text-primary hover:text-blue-700 text-sm font-medium"
+                            >
+                              {isExpanded ? 'Nascondi dettagli' : 'Mostra dettagli'}
+                            </button>
+                          )}
+                        </div>
+                        
+                        <p className="text-gray-700 mb-4 leading-relaxed">{rec.description}</p>
 
-                {/* Metriche */}
-                {rec.metrics && (
-                  <div className="mb-4 p-3 bg-white rounded border border-gray-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ChartBarIcon className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold text-gray-700">Metriche</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      {rec.metrics.current && (
-                        <div>
-                          <span className="text-gray-600">Attuale:</span>{' '}
-                          <span className="font-semibold text-red-600">{rec.metrics.current}</span>
-                          {rec.metrics.unit && <span className="text-gray-500 ml-1">{rec.metrics.unit}</span>}
-                        </div>
-                      )}
-                      {rec.metrics.target && (
-                        <div>
-                          <span className="text-gray-600">Target:</span>{' '}
-                          <span className="font-semibold text-green-600">{rec.metrics.target}</span>
-                          {rec.metrics.unit && <span className="text-gray-500 ml-1">{rec.metrics.unit}</span>}
-                        </div>
-                      )}
-                      {rec.metrics.improvement && (
-                        <div className="col-span-2 pt-2 border-t border-gray-200">
-                          <span className="text-gray-600">Miglioramento atteso:</span>{' '}
-                          <span className="font-semibold text-primary">{rec.metrics.improvement}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Risorse coinvolte */}
-                {rec.affectedResources && rec.affectedResources.length > 0 && (
-                  <div className="mb-4 text-sm text-gray-600">
-                    <span className="font-medium">Risorse coinvolte:</span>{' '}
-                    {rec.affectedResources.join(', ')}
-                  </div>
-                )}
-
-                {/* Passi da seguire */}
-                {rec.steps.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Passi da seguire:</p>
-                    <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-                      {rec.steps.map((step, index) => (
-                        <li key={index} className="leading-relaxed">{step}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-
-                {/* Dettagli espandibili */}
-                {isExpanded && hasDetails && (
-                  <div className="mt-4 space-y-4 pt-4 border-t border-gray-300">
-                    {/* Esempi di codice */}
-                    {rec.codeExamples && rec.codeExamples.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <CodeBracketIcon className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-semibold text-gray-700">Esempi di Codice</span>
-                        </div>
-                        <div className="space-y-2">
-                          {rec.codeExamples.map((code, index) => (
-                            <pre key={index} className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
-                              <code>{code}</code>
-                            </pre>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Risorse utili */}
-                    {rec.resources && rec.resources.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <LinkIcon className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-semibold text-gray-700">Risorse Utili</span>
-                        </div>
-                        <ul className="space-y-2">
-                          {rec.resources.map((resource, index) => (
-                            <li key={index} className="text-sm">
-                              <a
-                                href={resource.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:text-blue-700 hover:underline font-medium"
-                              >
-                                {resource.title}
-                              </a>
-                              {resource.description && (
-                                <span className="text-gray-600 ml-2">- {resource.description}</span>
+                        {/* Metriche */}
+                        {rec.metrics && (
+                          <div className="mb-4 p-3 bg-white rounded border border-gray-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ChartBarIcon className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-semibold text-gray-700">Metriche</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              {rec.metrics.current && (
+                                <div>
+                                  <span className="text-gray-600">Attuale:</span>{' '}
+                                  <span className="font-semibold text-red-600">{rec.metrics.current}</span>
+                                  {rec.metrics.unit && <span className="text-gray-500 ml-1">{rec.metrics.unit}</span>}
+                                </div>
                               )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
+                              {rec.metrics.target && (
+                                <div>
+                                  <span className="text-gray-600">Target:</span>{' '}
+                                  <span className="font-semibold text-green-600">{rec.metrics.target}</span>
+                                  {rec.metrics.unit && <span className="text-gray-500 ml-1">{rec.metrics.unit}</span>}
+                                </div>
+                              )}
+                              {rec.metrics.improvement && (
+                                <div className="col-span-2 pt-2 border-t border-gray-200">
+                                  <span className="text-gray-600">Miglioramento atteso:</span>{' '}
+                                  <span className="font-semibold text-primary">{rec.metrics.improvement}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                {/* Impatto */}
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <p className="text-sm">
-                    <span className="font-semibold text-gray-700">Impatto stimato:</span>{' '}
-                    <span className="text-primary font-medium">{rec.impact}</span>
-                  </p>
-                </div>
-              </div>
+                        {/* Risorse coinvolte */}
+                        {rec.affectedResources && rec.affectedResources.length > 0 && (
+                          <div className="mb-4 text-sm text-gray-600">
+                            <span className="font-medium">Risorse coinvolte:</span>{' '}
+                            {rec.affectedResources.join(', ')}
+                          </div>
+                        )}
+
+                        {/* Passi da seguire */}
+                        {rec.steps.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Passi da seguire:</p>
+                            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
+                              {rec.steps.map((step, index) => (
+                                <li key={index} className="leading-relaxed">{step}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+
+                        {/* Dettagli espandibili */}
+                        {isExpanded && hasDetails && (
+                          <div className="mt-4 space-y-4 pt-4 border-t border-gray-300">
+                            {/* Esempi di codice */}
+                            {rec.codeExamples && rec.codeExamples.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CodeBracketIcon className="h-4 w-4 text-primary" />
+                                  <span className="text-sm font-semibold text-gray-700">Esempi di Codice</span>
+                                </div>
+                                <div className="space-y-2">
+                                  {rec.codeExamples.map((code, index) => (
+                                    <pre key={index} className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+                                      <code>{code}</code>
+                                    </pre>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Risorse utili */}
+                            {rec.resources && rec.resources.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <LinkIcon className="h-4 w-4 text-primary" />
+                                  <span className="text-sm font-semibold text-gray-700">Risorse Utili</span>
+                                </div>
+                                <ul className="space-y-2">
+                                  {rec.resources.map((resource, index) => (
+                                    <li key={index} className="text-sm">
+                                      <a
+                                        href={resource.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:text-blue-700 hover:underline font-medium"
+                                      >
+                                        {resource.title}
+                                      </a>
+                                      {resource.description && (
+                                        <span className="text-gray-600 ml-2">- {resource.description}</span>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Impatto */}
+                        <div className="mt-4 pt-3 border-t border-gray-200">
+                          <p className="text-sm">
+                            <span className="font-semibold text-gray-700">Impatto stimato:</span>{' '}
+                            <span className="text-primary font-medium">{rec.impact}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -224,4 +276,3 @@ export default function RecommendationsList({ recommendations }: Recommendations
     </div>
   );
 }
-

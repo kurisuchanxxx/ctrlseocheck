@@ -332,11 +332,18 @@ export const buildRecommendations = ({
     });
   }
 
-  if (onPage.metaTagsMissing.length > 0) {
+  // Meta tags: più specifico - mostra solo se mancano effettivamente
+  const missingMetaTags = onPage.metaTagsMissing.filter(tag => {
+    // Se manca solo Twitter Card, è meno critico
+    return tag !== 'twitter-card';
+  });
+  
+  if (missingMetaTags.length > 0) {
+    const missingList = missingMetaTags.join(', ');
     recommendations.push({
       id: uuid(),
-      title: "Completa meta title e description",
-      description: `Mancano meta tag in ${onPage.metaTagsMissing.length} pagine principali. Meta title e description sono essenziali per il ranking e influenzano direttamente il click-through rate (CTR) nei risultati di ricerca.`,
+      title: `Completa meta tag mancanti: ${missingList}`,
+      description: `Mancano ${missingMetaTags.length} meta tag essenziali: ${missingList}. Meta title e description sono essenziali per il ranking e influenzano direttamente il click-through rate (CTR) nei risultati di ricerca.`,
       priority: "alta",
       impact: priorityMap.alta.impact,
       steps: [
@@ -347,7 +354,7 @@ export const buildRecommendations = ({
         "Verifica anteprima: usa SERP Snippet Tool o Google Search Console per vedere come appariranno nei risultati.",
         "Aggiungi structured data: usa JSON-LD per fornire contesto aggiuntivo a Google.",
       ],
-      evidence: `Meta tags incompleti rilevati in ${onPage.metaTagsMissing.length} pagina/e durante la scansione`,
+      evidence: `Meta tag mancanti: ${missingList} (rilevati durante la scansione della homepage)`,
       codeExamples: [
         "<!-- Meta title ottimizzato -->\n<title>Ristorante Pizzeria Milano | Menu e Prenotazioni Online</title>",
         "<!-- Meta description ottimizzata -->\n<meta name=\"description\" content=\"Pizzeria tradizionale a Milano. Menu completo, prenotazioni online, consegna a domicilio. Scopri le nostre pizze artigianali!\">",
@@ -359,22 +366,24 @@ export const buildRecommendations = ({
         { title: "Title Tag Checker", url: "https://www.seoreviewtools.com/title-tag-optimization/", description: "Analizza e ottimizza i tuoi title tag" },
       ],
       metrics: {
-        current: `${onPage.metaTagsMissing.length} pagine senza meta tags`,
-        target: "0 pagine",
+        current: `Mancano: ${missingList}`,
+        target: "Tutti i meta tag presenti",
         improvement: "Miglioramento CTR atteso: +15-30% nei risultati di ricerca",
       },
       difficulty: "facile",
       estimatedTime: "1-2 ore",
       category: "seo",
-      affectedResources: [`${onPage.metaTagsMissing.length} pagine`],
+      affectedResources: [`Meta tag: ${missingList}`],
     });
   }
 
+  // Immagini: mostra solo se ci sono effettivamente immagini senza alt
   if (onPage.imagesWithoutAlt > 0) {
+    const severity = onPage.imagesWithoutAlt > 10 ? 'molte' : onPage.imagesWithoutAlt > 5 ? 'diverse' : 'alcune';
     recommendations.push({
       id: uuid(),
-      title: "Aggiungi alt text alle immagini",
-      description: `${onPage.imagesWithoutAlt} immagini non hanno testo alternativo descrittivo. L'alt text è essenziale per accessibilità, SEO (Google Images) e migliora l'esperienza utente quando le immagini non caricano.`,
+      title: `Aggiungi alt text a ${onPage.imagesWithoutAlt} immagine${onPage.imagesWithoutAlt > 1 ? 'i' : ''} senza descrizione`,
+      description: `${onPage.imagesWithoutAlt} ${severity} immagini non hanno testo alternativo descrittivo. L'alt text è essenziale per accessibilità, SEO (Google Images) e migliora l'esperienza utente quando le immagini non caricano.`,
       priority: "media",
       impact: priorityMap.media.impact,
       steps: [
@@ -408,12 +417,22 @@ export const buildRecommendations = ({
     });
   }
 
+  // NAP: più specifico - mostra cosa manca esattamente
   if (!local.napConsistency) {
+    const missingNap = [];
+    if (!local.napDetails.name) missingNap.push('Nome');
+    if (!local.napDetails.address) missingNap.push('Indirizzo');
+    if (!local.napDetails.phone) missingNap.push('Telefono');
+    
+    const napTitle = missingNap.length === 3 
+      ? "Aggiungi dati NAP completi (Name, Address, Phone)"
+      : `Completa dati NAP mancanti: ${missingNap.join(', ')}`;
+    
     recommendations.push({
       id: uuid(),
-      title: "Allinea i dati NAP (Name, Address, Phone)",
+      title: napTitle,
       description:
-        "Name, Address, Phone non sono coerenti o non presenti nella homepage. La coerenza NAP è critica per Local SEO: Google verifica che i dati siano identici su sito web, Google Business Profile, e directory locali.",
+        `${missingNap.length === 3 ? 'I dati NAP (Name, Address, Phone) non sono presenti' : `Mancano i seguenti dati NAP: ${missingNap.join(', ')}`} nella homepage. La coerenza NAP è critica per Local SEO: Google verifica che i dati siano identici su sito web, Google Business Profile, e directory locali.`,
       priority: "alta",
       impact: priorityMap.alta.impact,
       steps: [
@@ -424,7 +443,7 @@ export const buildRecommendations = ({
         "Usa formato standardizzato: sempre stesso formato per indirizzo (es: sempre 'Via' o sempre abbreviazione 'V.')",
         "Verifica con strumenti: usa Local SEO Checker per trovare inconsistenze su directory.",
       ],
-      evidence: "Incongruenze NAP riscontrate: dati mancanti o non coerenti tra homepage e altre fonti",
+      evidence: `Dati NAP mancanti: ${missingNap.join(', ')} (rilevati durante la scansione della homepage)`,
       codeExamples: [
         "<!-- NAP nel footer -->\n<footer>\n  <p><strong>Pizzeria Milano</strong></p>\n  <p>Via Roma 123, 20121 Milano (MI)</p>\n  <p>Tel: +39 02 1234 5678</p>\n</footer>",
         "<!-- Schema LocalBusiness JSON-LD -->\n<script type=\"application/ld+json\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"LocalBusiness\",\n  \"name\": \"Pizzeria Milano\",\n  \"address\": {\n    \"@type\": \"PostalAddress\",\n    \"streetAddress\": \"Via Roma 123\",\n    \"addressLocality\": \"Milano\",\n    \"postalCode\": \"20121\",\n    \"addressRegion\": \"MI\",\n    \"addressCountry\": \"IT\"\n  },\n  \"telephone\": \"+390212345678\"\n}\n</script>",
@@ -437,13 +456,13 @@ export const buildRecommendations = ({
         { title: "Guida: NAP Consistency", url: "https://moz.com/learn/local/nap-consistency", description: "Importanza della coerenza NAP" },
       ],
       metrics: {
-        current: "NAP non coerente o mancante",
-        target: "NAP coerente e presente",
+        current: `Mancano: ${missingNap.join(', ')}`,
+        target: "Nome, Indirizzo e Telefono presenti",
         improvement: "Miglioramento ranking locale atteso: +25-40% visibilità ricerca locale",
       },
       difficulty: "facile",
       estimatedTime: "1-2 ore",
-      category: "aeo",
+      category: "local",
     });
   }
 
@@ -516,7 +535,7 @@ export const buildRecommendations = ({
       },
       difficulty: "media",
       estimatedTime: "4-8 ore",
-      category: "aeo",
+      category: "local",
     });
   }
 
@@ -591,19 +610,26 @@ export const buildRecommendations = ({
       },
       difficulty: "facile",
       estimatedTime: "30 minuti - 1 ora",
-      category: "aeo",
+      category: "local",
     });
   }
 
   // ========== RACCOMANDAZIONI AEO/RAO ==========
   
-  // 1. Struttura domanda-risposta
+  // 1. Struttura domanda-risposta - più specifico
   if (!aeo.hasQaStructure && aeo.qaSections === 0) {
+    const questionCount = (aeo.relatedQuestions || 0);
+    const hasQuestions = questionCount > 0;
+    
     recommendations.push({
       id: uuid(),
-      title: "Implementa struttura domanda-risposta per AEO",
+      title: hasQuestions 
+        ? `Struttura le ${questionCount} domande trovate in formato Q&A per AEO`
+        : "Implementa struttura domanda-risposta per AEO",
       description:
-        "Le AI e i motori di risposta privilegiano contenuti strutturati in formato Q&A. Aggiungere sezioni domanda-risposta migliora la probabilità di essere citati da ChatGPT, Claude, Perplexity e Google AI Overview.",
+        hasQuestions
+          ? `Il contenuto contiene ${questionCount} domande ma non sono strutturate in formato Q&A. Le AI e i motori di risposta privilegiano contenuti strutturati in formato Q&A. Strutturare queste domande migliora la probabilità di essere citati da ChatGPT, Claude, Perplexity e Google AI Overview.`
+          : "Le AI e i motori di risposta privilegiano contenuti strutturati in formato Q&A. Aggiungere sezioni domanda-risposta migliora la probabilità di essere citati da ChatGPT, Claude, Perplexity e Google AI Overview.",
       priority: "media",
       impact: priorityMap.media.impact,
       steps: [
@@ -613,7 +639,9 @@ export const buildRecommendations = ({
         "Includi domande che iniziano con 'Come', 'Perché', 'Quando', 'Dove', 'Cosa'.",
         "Posiziona le FAQ in punti strategici: homepage, pagine prodotto/servizio, footer.",
       ],
-      evidence: "Nessuna struttura Q&A rilevata nel contenuto",
+      evidence: hasQuestions 
+        ? `${questionCount} domande trovate ma non strutturate in formato Q&A`
+        : "Nessuna struttura Q&A rilevata nel contenuto (0 sezioni Q&A trovate)",
       codeExamples: [
         "<!-- Esempio struttura Q&A -->\n<div class=\"faq-section\">\n  <h3><strong>Come funziona il servizio?</strong></h3>\n  <p>Il servizio funziona in tre semplici passaggi: contatto, consulenza e implementazione.</p>\n</div>",
         "<!-- Schema FAQPage JSON-LD -->\n<script type=\"application/ld+json\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"FAQPage\",\n  \"mainEntity\": [{\n    \"@type\": \"Question\",\n    \"name\": \"Come funziona il servizio?\",\n    \"acceptedAnswer\": {\n      \"@type\": \"Answer\",\n      \"text\": \"Il servizio funziona in tre passaggi...\"\n    }\n  }]\n}\n</script>",
@@ -629,17 +657,21 @@ export const buildRecommendations = ({
       },
       difficulty: "facile",
       estimatedTime: "2-4 ore",
-      category: "seo",
+      category: "aeo",
     });
   }
 
-  // 2. Schema markup mancante
+  // 2. Schema markup mancante - più specifico
   if (!aeo.hasFaqSchema && !aeo.hasHowToSchema && !aeo.hasArticleSchema) {
+    const existingSchemas = aeo.structuredDataTypes.length > 0 
+      ? `Schema presenti: ${aeo.structuredDataTypes.slice(0, 3).join(', ')}${aeo.structuredDataTypes.length > 3 ? '...' : ''}`
+      : 'Nessuno schema strutturato trovato';
+    
     recommendations.push({
       id: uuid(),
       title: "Aggiungi schema markup per AEO (FAQ, HowTo, Article)",
       description:
-        "I dati strutturati Schema.org aiutano le AI a comprendere e citare meglio i tuoi contenuti. FAQPage, HowTo e Article sono particolarmente efficaci per l'Answer Engine Optimization.",
+        `${existingSchemas}. I dati strutturati Schema.org aiutano le AI a comprendere e citare meglio i tuoi contenuti. FAQPage, HowTo e Article sono particolarmente efficaci per l'Answer Engine Optimization.`,
       priority: "alta",
       impact: priorityMap.alta.impact,
       steps: [
@@ -649,7 +681,7 @@ export const buildRecommendations = ({
         "Aggiungi schema Article per blog post e contenuti editoriali.",
         "Testa con Google Rich Results Test per verificare la validità.",
       ],
-      evidence: `Nessuno schema FAQ/HowTo/Article trovato. Schema presenti: ${aeo.structuredDataTypes.length > 0 ? aeo.structuredDataTypes.join(', ') : 'nessuno'}`,
+      evidence: `Nessuno schema FAQ/HowTo/Article trovato. ${existingSchemas}`,
       codeExamples: [
         "<!-- Schema HowTo -->\n<script type=\"application/ld+json\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"HowTo\",\n  \"name\": \"Come ottimizzare il SEO\",\n  \"step\": [{\n    \"@type\": \"HowToStep\",\n    \"text\": \"Passo 1: Analizza le keyword\"\n  }]\n}\n</script>",
       ],
@@ -664,17 +696,22 @@ export const buildRecommendations = ({
       },
       difficulty: "media",
       estimatedTime: "3-5 ore",
-      category: "seo",
+      category: "aeo",
     });
   }
 
-  // 3. Contenuti non citabili
+  // 3. Contenuti non citabili - più specifico
   if (!aeo.hasStatistics && !aeo.hasSources && aeo.snippetReadyContent < 3) {
+    const missing = [];
+    if (!aeo.hasStatistics) missing.push('statistiche');
+    if (!aeo.hasSources) missing.push('fonti');
+    if (aeo.snippetReadyContent < 3) missing.push(`paragrafi snippet-ready (${aeo.snippetReadyContent}/3)`);
+    
     recommendations.push({
       id: uuid(),
-      title: "Rendi i contenuti più citabili per le AI",
+      title: `Migliora citabilità contenuti: aggiungi ${missing.join(', ')}`,
       description:
-        "Le AI privilegiano contenuti con statistiche, fonti verificabili e paragrafi brevi e informativi (snippet-ready). Questo aumenta la probabilità di essere citati nelle risposte.",
+        `Il contenuto manca di: ${missing.join(', ')}. Le AI privilegiano contenuti con statistiche, fonti verificabili e paragrafi brevi e informativi (snippet-ready). Questo aumenta la probabilità di essere citati nelle risposte.`,
       priority: "media",
       impact: priorityMap.media.impact,
       steps: [
@@ -684,7 +721,7 @@ export const buildRecommendations = ({
         "Usa liste puntate per informazioni facilmente estraibili.",
         "Includi tabelle per dati strutturati (prezzi, confronti, specifiche).",
       ],
-      evidence: `Paragrafi snippet-ready: ${aeo.snippetReadyContent}/10 (target: 3+), Statistiche: ${aeo.hasStatistics ? 'presenti' : 'assenti'}, Fonti: ${aeo.hasSources ? 'presenti' : 'assenti'}`,
+      evidence: `Mancano: ${missing.join(', ')}. Paragrafi snippet-ready attuali: ${aeo.snippetReadyContent}/3 (target: 3+)`,
       codeExamples: [
         "<!-- Paragrafo snippet-ready -->\n<p>Secondo uno studio del 2024, il 73% degli utenti cerca informazioni locali su mobile. Questo dato evidenzia l'importanza della SEO locale per le PMI italiane.</p>",
         "<!-- Lista estraibile -->\n<ul>\n  <li>Ottimizzazione mobile: +40% conversioni</li>\n  <li>Schema markup: +25% visibilità</li>\n  <li>Contenuti locali: +60% traffico locale</li>\n</ul>",
@@ -699,17 +736,21 @@ export const buildRecommendations = ({
       },
       difficulty: "facile",
       estimatedTime: "2-3 ore",
-      category: "seo",
+      category: "aeo",
     });
   }
 
-  // 4. Ottimizzazione semantica
+  // 4. Ottimizzazione semantica - più specifico
   if (aeo.topicDepth < 10 || aeo.internalLinks < 5) {
+    const issues = [];
+    if (aeo.topicDepth < 10) issues.push(`topic depth basso (${aeo.topicDepth}/10)`);
+    if (aeo.internalLinks < 5) issues.push(`link interni insufficienti (${aeo.internalLinks}/5)`);
+    
     recommendations.push({
       id: uuid(),
-      title: "Approfondisci l'argomento e crea topic clusters",
+      title: `Approfondisci contenuto: ${issues.join(', ')}`,
       description:
-        "Le AI apprezzano contenuti approfonditi che coprono un argomento in modo completo. Crea topic clusters collegando concetti correlati con link interni.",
+        `Il contenuto ha ${issues.join(' e ')}. Le AI apprezzano contenuti approfonditi che coprono un argomento in modo completo. Crea topic clusters collegando concetti correlati con link interni.`,
       priority: "media",
       impact: priorityMap.media.impact,
       steps: [
@@ -719,7 +760,7 @@ export const buildRecommendations = ({
         "Rispondi a domande correlate (People Also Ask style).",
         "Crea una struttura a hub: pagina principale + pagine correlate.",
       ],
-      evidence: `Profondità argomento: ${aeo.topicDepth}/20, Link interni: ${aeo.internalLinks}`,
+      evidence: `Topic depth: ${aeo.topicDepth}/10 (target: 10+), Link interni: ${aeo.internalLinks}/5 (target: 5+)`,
       resources: [
         { title: "Topic Clusters Strategy", url: "https://www.hubspot.com/topic-clusters", description: "Come creare topic clusters efficaci" },
       ],
@@ -730,17 +771,22 @@ export const buildRecommendations = ({
       },
       difficulty: "media",
       estimatedTime: "4-8 ore",
-      category: "seo",
+      category: "aeo",
     });
   }
 
-  // 5. Formato e leggibilità
+  // 5. Formato e leggibilità - più specifico
   if (aeo.averageSentenceLength > 20 || aeo.averageParagraphLength > 4 || aeo.boldKeywords < 3) {
+    const issues = [];
+    if (aeo.averageSentenceLength > 20) issues.push(`frasi troppo lunghe (${aeo.averageSentenceLength} parole, target: <20)`);
+    if (aeo.averageParagraphLength > 4) issues.push(`paragrafi troppo lunghi (${aeo.averageParagraphLength} frasi, target: 2-3)`);
+    if (aeo.boldKeywords < 3) issues.push(`poche keyword evidenziate (${aeo.boldKeywords}/3)`);
+    
     recommendations.push({
       id: uuid(),
-      title: "Ottimizza formato e leggibilità per le AI",
+      title: `Ottimizza leggibilità: ${issues.join(', ')}`,
       description:
-        "Le AI preferiscono contenuti con frasi brevi, paragrafi corti e concetti chiave evidenziati. Questo facilita l'estrazione e la sintesi delle informazioni.",
+        `Il contenuto ha problemi di leggibilità: ${issues.join('; ')}. Le AI preferiscono contenuti con frasi brevi, paragrafi corti e concetti chiave evidenziati. Questo facilita l'estrazione e la sintesi delle informazioni.`,
       priority: "bassa",
       impact: priorityMap.bassa.impact,
       steps: [
@@ -758,7 +804,7 @@ export const buildRecommendations = ({
       },
       difficulty: "facile",
       estimatedTime: "1-2 ore",
-      category: "seo",
+      category: "aeo",
     });
   }
 
