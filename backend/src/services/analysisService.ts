@@ -72,20 +72,34 @@ export const performAnalysis = async (
   // Dobbiamo recuperare l'HTML per analizzare AEO
   const aeo = await (async () => {
     try {
-      const axios = (await import("axios")).default;
-      const response = await axios.get(normalizedUrl, {
-        headers: { "User-Agent": "CTRLStudioLocalSeoBot/1.0" },
-        timeout: 15000,
+      const { createHttpClient } = await import("../utils/httpClient");
+      const { sanitizeHtml } = await import("../utils/sanitizer");
+      const httpClient = createHttpClient();
+      const response = await httpClient.get(normalizedUrl, {
         responseType: "text",
+        timeout: 15000,
       });
-      return analyzeAeo(response.data, normalizedUrl);
-    } catch {
+      const sanitizedHtml = sanitizeHtml(response.data);
+      return analyzeAeo(sanitizedHtml, normalizedUrl);
+    } catch (error: any) {
       // Se fallisce, restituisci valori di default
+      const { logger } = await import("../utils/logger");
+      logger.warn('AEO analysis failed, using defaults', {
+        url: normalizedUrl,
+        error: error.message,
+      });
       return analyzeAeo("", normalizedUrl);
     }
   })();
 
-  const offPage: OffPageSeoMetrics = simulateOffPageSignals(normalizedUrl);
+  // Off-Page SEO: ora con verifiche reali
+  const offPage: OffPageSeoMetrics = await simulateOffPageSignals(
+    normalizedUrl,
+    technical.hasSsl,
+    technical.hasSitemap,
+    technical.hasRobots,
+    local.napDetails.name
+  );
   offPage.hasGoogleBusinessProfile ||= local.hasLocalSchema;
 
   const competitors = analyzeCompetitors(

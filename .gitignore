@@ -53,3 +53,9 @@ Thumbs.db
 !**/assets/**/*.jpeg
 Screenshot*.png
 
+# Logs
+logs/
+*.log
+backend/logs/
+frontend/logs/
+

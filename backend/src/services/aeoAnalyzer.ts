@@ -6,23 +6,7 @@ export const analyzeAeo = (html: string, baseUrl: string): AeoMetrics => {
   const bodyText = $("body").text() || "";
   const bodyHtml = $("body").html() || "";
 
-  // 1. Struttura domanda-risposta (migliorato: più generoso)
-  const qaPatterns = [
-    /(?:domanda|question|q:|d:|faq|f\.a\.q\.)/i,
-    /(?:risposta|answer|a:|r:|soluzione)/i,
-    /(?:come\s+.*\?|what\s+.*\?|why\s+.*\?|when\s+.*\?|where\s+.*\?|chi\s+.*\?|quale\s+.*\?|quali\s+.*\?)/i,
-    /\?/g, // Qualsiasi domanda (più generoso)
-  ];
-  const hasQaStructure = qaPatterns.some(pattern => pattern.test(bodyText));
-  
-  // Conta sezioni Q&A (pattern di domande seguite da risposte) - più generoso
-  const questionCount = (bodyText.match(/\?/g) || []).length;
-  const qaSections = Math.max(
-    (bodyText.match(/(?:domanda|question|q:|come|what|why|when|where|chi|quale|quali).*?(?:risposta|answer|a:|soluzione)/gi) || []).length,
-    Math.floor(questionCount / 3) // Almeno 1 sezione ogni 3 domande
-  );
-  
-  // 2. Schema markup
+  // 2. Schema markup (prima per poterlo usare dopo)
   const schemaTypes: string[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
@@ -52,22 +36,112 @@ export const analyzeAeo = (html: string, baseUrl: string): AeoMetrics => {
   const hasTwitterCards = $('meta[name^="twitter:"]').length > 0;
   const richMetadata = hasOpenGraph || hasTwitterCards || schemaTypes.length > 0;
   
-  // 3. Contenuti autorevoli e citabili (migliorato: più generoso)
-  // Statistiche (numeri, percentuali, date, quantità) - più generoso
-  const statsPattern = /\d+[%€$£]|\d{1,3}(?:\.\d{3})*(?:,\d+)?|(?:circa|oltre|più di|meno di|oltre|supera|raggiunge)\s+\d+|\d+\s*(?:anni|mesi|giorni|ore|minuti|secondi|clienti|visitatori|ordini|prodotti)/i;
-  const hasStatistics = statsPattern.test(bodyText);
+  // 1. Struttura domanda-risposta - MIGLIORATO con validazione contestuale
+  // Cerca pattern Q&A strutturati (domanda seguita da risposta)
+  const qaStructuredPatterns = [
+    // Pattern espliciti: "Domanda: ... Risposta: ..."
+    /(?:domanda|question|q:|d:|faq|f\.a\.q\.)\s*:?\s*[^?]+\?(?:\s*[^?]+(?:risposta|answer|a:|r:|soluzione|risultato))/gi,
+    // Pattern impliciti: domanda seguita da risposta nella stessa sezione
+    /(?:come|what|why|when|where|chi|quale|quali|perché|perchè)\s+[^?]+\?[^?]{20,200}(?:è|sono|si|può|deve|bisogna)/gi,
+  ];
   
-  // Fonti citate (più generoso: include anche citazioni implicite)
-  const sourcesPattern = /(?:fonte|source|riferimento|reference|secondo|studio|ricerca|dati|statistiche|report|indagine|analisi|fonte:|secondo\s+.*?|come\s+riportato)/i;
-  const hasSources = sourcesPattern.test(bodyText);
+  // Conta sezioni Q&A strutturate
+  let qaSections = 0;
+  qaStructuredPatterns.forEach(pattern => {
+    const matches = bodyText.match(pattern);
+    if (matches) qaSections += matches.length;
+  });
   
-  // Snippet-ready content (paragrafi brevi 2-3 frasi)
+  // Cerca anche in elementi strutturati (dl, FAQ schema, etc.)
+  const faqElements = $('dl, [itemtype*="FAQ"], [class*="faq"], [id*="faq"]').length;
+  qaSections += faqElements;
+  
+  // Verifica presenza di FAQ schema
+  const hasFaqSchemaInCode = schemaTypes.some(t => t.includes("faq") || t.includes("question"));
+  if (hasFaqSchemaInCode) qaSections += 2; // Bonus per schema strutturato
+  
+  // Conta domande totali (per stima)
+  const questionCount = (bodyText.match(/\?/g) || []).length;
+  // Se ci sono molte domande ma poche sezioni strutturate, stima basata su domande
+  if (qaSections === 0 && questionCount >= 3) {
+    qaSections = Math.floor(questionCount / 3); // Almeno 1 sezione ogni 3 domande
+  }
+  
+  const hasQaStructure = qaSections > 0 || hasFaqSchemaInCode;
+  
+  // 3. Contenuti autorevoli e citabili - MIGLIORATO con validazione contestuale
+  // Statistiche con contesto (non solo numeri, ma numeri con significato)
+  const statsPatterns = [
+    // Percentuali con contesto
+    /\d+%\s+(?:dei|delle|degli|del|della|in|su|per|con|secondo|secondo\s+.*?)/i,
+    // Numeri con unità di misura rilevanti
+    /\d+\s*(?:anni|mesi|giorni|ore|minuti|secondi|clienti|visitatori|ordini|prodotti|utenti|iscritti|iscrizioni|prenotazioni|recensioni|voti|stelle|rating)/i,
+    // Valori monetari
+    /\d+[€$£]\s*(?:in|per|di|su|circa|oltre|più di|meno di)/i,
+    // Numeri grandi con contesto (migliaia, milioni)
+    /\d{1,3}(?:\.\d{3})+\s*(?:persone|utenti|clienti|visitatori|prodotti|servizi|ordini|prenotazioni)/i,
+    // Statistiche comparative
+    /(?:circa|oltre|più di|meno di|supera|raggiunge|oltre|fino a|almeno)\s+\d+\s*(?:persone|utenti|clienti|visitatori|prodotti|servizi|ordini|prenotazioni|%)/i,
+  ];
+  
+  let hasStatistics = false;
+  let statsCount = 0;
+  statsPatterns.forEach(pattern => {
+    const matches = bodyText.match(pattern);
+    if (matches) {
+      statsCount += matches.length;
+      hasStatistics = true;
+    }
+  });
+  
+  // Richiede almeno 2 statistiche per essere considerato significativo
+  if (statsCount < 2) hasStatistics = false;
+  
+  // Fonti citate - MIGLIORATO con pattern più specifici
+  const sourcesPatterns = [
+    // Citazioni esplicite
+    /(?:fonte|source|riferimento|reference):\s*[^\n]{10,100}/i,
+    // Citazioni con "secondo"
+    /secondo\s+(?:uno\s+)?(?:studio|ricerca|indagine|analisi|report|dati|statistiche|fonte|sito|articolo|pubblicazione)/i,
+    // Citazioni con "come riportato"
+    /(?:come|secondo)\s+(?:riportato|indicato|mostrato|dimostrato|pubblicato|rivelato)\s+(?:da|da|in|su)/i,
+    // Riferimenti a studi/ricerche
+    /(?:studio|ricerca|indagine|analisi|report|dati|statistiche)\s+(?:condotto|pubblicato|realizzato|effettuato)\s+(?:da|da|in|su)/i,
+    // Link a fonti (href con pattern di fonti)
+    /href=["'][^"']*(?:studio|ricerca|fonte|source|reference|pubblicazione|articolo|paper)/i,
+  ];
+  
+  let hasSources = false;
+  let sourcesCount = 0;
+  sourcesPatterns.forEach(pattern => {
+    const matches = bodyText.match(pattern);
+    if (matches) {
+      sourcesCount += matches.length;
+      hasSources = true;
+    }
+  });
+  
+  // Richiede almeno 1 fonte esplicita per essere considerato significativo
+  if (sourcesCount === 0) hasSources = false;
+  
+  // Snippet-ready content - MIGLIORATO con validazione qualità
   const paragraphs = $("p").toArray();
   let snippetReadyCount = 0;
   paragraphs.forEach((p) => {
     const text = $(p).text().trim();
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
-    if (sentences.length >= 2 && sentences.length <= 3 && text.length < 300) {
+    
+    // Criteri per snippet-ready:
+    // 1. 2-3 frasi (non troppo breve, non troppo lungo)
+    // 2. Lunghezza totale 50-300 caratteri (ideale per snippet)
+    // 3. Contiene informazioni concrete (non solo filler)
+    // 4. Inizia con maiuscola (probabilmente inizio paragrafo)
+    const isGoodLength = sentences.length >= 2 && sentences.length <= 3;
+    const isGoodSize = text.length >= 50 && text.length < 300;
+    const hasConcreteInfo = /(?:è|sono|si|può|deve|bisogna|include|contiene|offre|fornisce|garantisce)/i.test(text);
+    const startsProperly = /^[A-ZÀÈÉÌÒÙ]/.test(text);
+    
+    if (isGoodLength && isGoodSize && hasConcreteInfo && startsProperly) {
       snippetReadyCount++;
     }
   });

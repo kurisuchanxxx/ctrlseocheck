@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PAGESPEED_API_KEY } from '../config';
+import { logger } from '../utils/logger';
 
 interface PageSpeedResult {
   loadingExperience?: {
@@ -194,21 +195,19 @@ async function analyzeStrategy(
   } catch (error) {
     if (axios.isAxiosError(error)) {
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-        console.warn('⏱️ PageSpeed Insights timeout - continuo con analisi base');
+        logger.warn('PageSpeed Insights timeout - continuing with base analysis');
         return null;
       } else if (error.response?.status === 400) {
-        console.warn('⚠️ URL non valido o non raggiungibile per PageSpeed');
-        console.warn('Response:', error.response.data);
+        logger.warn('Invalid or unreachable URL for PageSpeed', { response: error.response.data });
       } else if (error.response?.status === 403) {
-        console.warn('⚠️ API key non valida o quota esaurita');
-        console.warn('Response:', error.response.data);
+        logger.warn('PageSpeed API key invalid or quota exhausted', { response: error.response.data });
       } else if (error.response?.status === 429) {
-        console.warn('⚠️ Quota giornaliera esaurita (25k richieste/giorno)');
+        logger.warn('PageSpeed daily quota exhausted (25k requests/day)');
       } else {
-        console.warn('⚠️ Errore HTTP PageSpeed:', error.response?.status);
+        logger.warn('PageSpeed HTTP error', { status: error.response?.status });
       }
     } else {
-      console.warn('⚠️ Errore PageSpeed Insights:', error instanceof Error ? error.message : 'Errore sconosciuto');
+      logger.warn('PageSpeed Insights error', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
     // Non bloccare l'analisi se PageSpeed fallisce
     return null;
@@ -263,14 +262,14 @@ export async function analyzeWithPageSpeed(url: string): Promise<PageSpeedMetric
     };
     
     console.log('✅ Analisi PageSpeed Insights completata!');
-    console.log(`   Mobile: ${mobile ? '✅' : '❌'}, Desktop: ${desktop ? '✅' : '❌'}`);
+    logger.info('PageSpeed analysis completed', { mobile: !!mobile, desktop: !!desktop });
     
     return {
       mobile: mobile || fallbackMetrics,
       desktop: desktop || fallbackMetrics,
     };
   } catch (error) {
-    console.warn('⚠️ Errore durante analisi PageSpeed:', error instanceof Error ? error.message : 'Errore sconosciuto');
+    logger.error('PageSpeed analysis error', { error: error instanceof Error ? error.message : 'Unknown error' });
     return null;
   }
 }

@@ -9,6 +9,8 @@ import {
   performAnalysis,
 } from "./services/analysisService";
 import { transformToFrontendFormat } from "./services/resultTransformer";
+import { logger } from "./utils/logger";
+import { validateAndCheckUrl, sanitizeUrl } from "./utils/urlValidator";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,7 +26,10 @@ app.use(cors());
 app.use(express.json());
 app.use(limiter);
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/health", (_req, res) => {
+  logger.debug('Health check');
+  res.json({ status: "ok" });
+});
 
 app.get("/api/history", (_req, res) => {
   const analyses = listAnalyses();
@@ -49,44 +54,67 @@ app.post("/api/analyze", async (req, res) => {
     competitors?: string[] 
   };
   
-  console.log('📥 Richiesta analisi ricevuta:', body.url);
+  logger.info('Analysis request received', { url: body.url });
   
   // Validazione parametri
   if (!body?.url) {
-    console.log('Errore: URL mancante');
+    logger.warn('Analysis request missing URL');
     return res.status(400).json({
       error: "URL è obbligatorio",
     });
   }
   
   if (!body?.businessType && !body?.businessSector) {
-    console.log('Errore: businessType/businessSector mancante');
+    logger.warn('Analysis request missing businessType');
     return res.status(400).json({
       error: "businessType o businessSector è obbligatorio",
     });
   }
   
   if (!body?.location && !body?.targetLocation) {
-    console.log('Errore: location/targetLocation mancante');
+    logger.warn('Analysis request missing location');
     return res.status(400).json({
       error: "location o targetLocation è obbligatorio",
     });
   }
   
   try {
+    // Sanitizza e valida URL
+    const sanitizedUrl = sanitizeUrl(body.url);
+    const urlValidation = await validateAndCheckUrl(sanitizedUrl);
+    
+    if (!urlValidation.valid) {
+      logger.warn('Invalid URL format', { url: sanitizedUrl, error: urlValidation.error });
+      return res.status(400).json({
+        error: `URL non valido: ${urlValidation.error}`,
+      });
+    }
+    
+    if (!urlValidation.reachable) {
+      logger.warn('URL not reachable', { url: sanitizedUrl, error: urlValidation.error });
+      return res.status(400).json({
+        error: `URL non raggiungibile: ${urlValidation.error || 'Impossibile connettersi al sito'}`,
+      });
+    }
+    
     const requestBody: AnalysisRequestBody = {
-      url: body.url,
+      url: sanitizedUrl,
       businessType: body.businessType || body.businessSector || 'altro',
       location: body.location || body.targetLocation || '',
-      competitors: body.competitors?.map((url: string) => ({ url })) || undefined,
+      competitors: body.competitors?.map((url: string) => sanitizeUrl(url)).map((url) => ({ url })) || undefined,
       forceRefresh: body.forceRefresh,
     };
     
-    console.log('Parametri validati:', JSON.stringify(requestBody, null, 2));
+    logger.info('Starting analysis', { url: sanitizedUrl, location: requestBody.location });
     const result = await performAnalysis(requestBody);
+    logger.info('Analysis completed', { url: sanitizedUrl, score: result.scoring.totalScore });
     res.json(transformToFrontendFormat(result));
   } catch (error) {
-    console.error('Errore durante analisi:', error);
+    logger.error('Analysis error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      url: body.url,
+    });
     res.status(500).json({
       error: error instanceof Error ? error.message : "Errore durante l'analisi",
     });
@@ -94,6 +122,9 @@ app.post("/api/analyze", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`SEO audit API running on http://localhost:${PORT}`);
+  logger.info(`SEO audit API running on http://localhost:${PORT}`, {
+    port: PORT,
+    env: process.env.NODE_ENV || 'development',
+  });
 });
 

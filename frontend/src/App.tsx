@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import AnalysisForm from './components/AnalysisForm';
 import ScoreGauge from './components/ScoreGauge';
 import RecommendationsList from './components/RecommendationsList';
@@ -65,9 +66,13 @@ function App() {
       setProgressStep(PROGRESS_STEPS.length - 1);
       setCurrentAnalysis(result);
       await loadHistory();
+      toast.success('Analisi completata con successo!');
     } catch (error: any) {
       console.error('Analysis error:', error);
-      alert(`Errore durante l'analisi: ${error.response?.data?.message || error.message}`);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Errore durante l\'analisi';
+      toast.error(errorMessage, {
+        duration: 6000,
+      });
     } finally {
       setIsLoading(false);
       setProgressStep(0);
@@ -78,9 +83,10 @@ function App() {
     if (!currentAnalysis) return;
     try {
       await generatePDF(currentAnalysis);
-    } catch (error) {
+      toast.success('PDF generato con successo!');
+    } catch (error: any) {
       console.error('PDF generation error:', error);
-      alert('Errore durante la generazione del PDF');
+      toast.error('Errore durante la generazione del PDF');
     }
   };
 

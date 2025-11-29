@@ -1,13 +1,24 @@
-import axios from "axios";
 import { load } from "cheerio";
 import dayjs from "dayjs";
-import { REQUEST_TIMEOUT_MS, SCAN_USER_AGENT } from "../config";
+import { REQUEST_TIMEOUT_MS } from "../config";
 import {
   LocalSeoMetrics,
   OnPageSeoMetrics,
   TechnicalSeoMetrics,
 } from "../types";
 import { analyzeWithPageSpeed, PageSpeedMetrics } from "./pagespeedService";
+import { createHttpClient } from "../utils/httpClient";
+import { sanitizeHtml } from "../utils/sanitizer";
+import { logger } from "../utils/logger";
+import {
+  extractPhoneWithContext,
+  extractAddressWithContext,
+  validateItalianPhone,
+  validateItalianAddress,
+  isInRelevantSection,
+} from "../utils/napValidator";
+
+const httpClient = createHttpClient();
 
 interface FetchResult {
   html: string;
@@ -18,21 +29,34 @@ interface FetchResult {
 const fetchDocument = async (url: string): Promise<FetchResult> => {
   const start = Date.now();
   try {
-    const response = await axios.get<string>(url, {
-      headers: { "User-Agent": SCAN_USER_AGENT },
-      timeout: REQUEST_TIMEOUT_MS,
+    const response = await httpClient.get<string>(url, {
       responseType: "text",
     });
+    
+    // Sanitizza HTML per sicurezza
+    const sanitizedHtml = sanitizeHtml(response.data);
+    
+    logger.info(`Fetched document: ${url}`, {
+      status: response.status,
+      loadTime: Date.now() - start,
+      size: sanitizedHtml.length,
+    });
+    
     return {
-      html: response.data,
+      html: sanitizedHtml,
       loadTimeMs: Date.now() - start,
       status: response.status,
     };
-  } catch (error) {
+  } catch (error: any) {
+    logger.error(`Failed to fetch document: ${url}`, {
+      error: error.message,
+      status: error.response?.status,
+      loadTime: Date.now() - start,
+    });
     return {
       html: "",
       loadTimeMs: Date.now() - start,
-      status: 0,
+      status: error.response?.status || 0,
     };
   }
 };
@@ -53,12 +77,12 @@ const analyzeTechnical = async (
 
   const checkAsset = async (path: string) => {
     try {
-      const res = await axios.head(`${origin}/${path}`, {
-        headers: { "User-Agent": SCAN_USER_AGENT },
-        timeout: 8000,
-      });
+      const res = await httpClient.head(`${origin}/${path}`);
       return res.status < 400;
-    } catch {
+    } catch (error: any) {
+      logger.debug(`Asset check failed: ${origin}/${path}`, {
+        status: error.response?.status,
+      });
       return false;
     }
   };
@@ -215,27 +239,57 @@ const analyzeLocalSeo = (
     }
   });
 
-  // Cerca anche nel testo normale (footer, contatti, etc.)
-  // Pattern comuni per telefono: +39, 331, etc.
+  // Cerca anche nel testo normale (footer, contatti, etc.) - MIGLIORATO
   if (!napDetails.phone) {
-    const phonePattern = /(\+?\d{1,4}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{2,4}[\s.-]?\d{2,4}[\s.-]?\d{2,4}/;
-    const phoneMatch = pageText.match(phonePattern);
-    if (phoneMatch) {
-      napDetails.phone = phoneMatch[0].trim();
+    // Cerca in sezioni rilevanti (footer, contatti)
+    $('footer, .footer, #footer, .contatti, .contacts, [class*="contact"], [id*="contact"]').each((_, el) => {
+      const sectionText = $(el).text();
+      const phone = extractPhoneWithContext(sectionText, 'contatti');
+      if (phone && !napDetails.phone) {
+        napDetails.phone = phone;
+        return false; // Break
+      }
+    });
+    
+    // Se non trovato, cerca in tutto il testo ma con validazione
+    if (!napDetails.phone) {
+      const phone = extractPhoneWithContext(pageText);
+      if (phone) {
+        napDetails.phone = phone;
+      }
     }
   }
 
-  // Cerca indirizzo nel testo (pattern comune: via, viale, corso, piazza, etc.)
+  // Cerca indirizzo nel testo - MIGLIORATO con validazione
   if (!napDetails.address) {
-    const addressPattern = /(via|viale|corso|piazza|piazzale|strada|lungomare|lungo\s+mare)\s+[a-zàèéìòù\s\d]+(?:,\s*\d+)?/i;
-    const addressMatch = pageText.match(addressPattern);
-    if (addressMatch) {
-      // Cerca anche CAP e città dopo l'indirizzo
-      const fullAddressMatch = pageText.match(new RegExp(addressMatch[0] + '[^.]*', 'i'));
-      if (fullAddressMatch) {
-        napDetails.address = fullAddressMatch[0].trim();
+    // Cerca in sezioni rilevanti prima
+    $('footer, .footer, #footer, .contatti, .contacts, [class*="contact"], [id*="contact"], [class*="address"], [id*="address"]').each((_, el) => {
+      const sectionText = $(el).text();
+      const address = extractAddressWithContext(sectionText, 'indirizzo');
+      if (address && !napDetails.address) {
+        napDetails.address = address;
+        return false; // Break
+      }
+    });
+    
+    // Se non trovato, cerca in tutto il testo ma con validazione
+    if (!napDetails.address) {
+      const address = extractAddressWithContext(pageText);
+      if (address) {
+        napDetails.address = address;
       }
     }
+  }
+  
+  // Valida i dati trovati
+  if (napDetails.phone && !validateItalianPhone(napDetails.phone)) {
+    logger.debug('Invalid phone format, removing', { phone: napDetails.phone });
+    napDetails.phone = undefined;
+  }
+  
+  if (napDetails.address && !validateItalianAddress(napDetails.address)) {
+    logger.debug('Invalid address format, removing', { address: napDetails.address });
+    napDetails.address = undefined;
   }
 
   const napConsistency =
@@ -243,10 +297,18 @@ const analyzeLocalSeo = (
     Boolean(napDetails.address) &&
     Boolean(napDetails.phone);
 
-  // Cerca menzioni della località (più flessibile)
+  // Cerca menzioni della località - MIGLIORATO con validazione contestuale
   const locationWords = locationLower.split(/[\s,]+/).filter(w => w.length > 2);
-  const mentionsLocation = locationWords.some(word => pageText.includes(word)) || 
-                          pageText.includes(locationLower);
+  
+  // Cerca in sezioni rilevanti (servizi, zona servita, etc.)
+  const relevantSections = $('footer, .servizi, .zona, [class*="serv"], [class*="area"], [class*="location"]').text().toLowerCase();
+  const mentionsInRelevantSections = locationWords.some(word => relevantSections.includes(word));
+  
+  // Cerca anche in tutto il testo ma con penalità se menzionato solo in articoli/blog
+  const allTextMentions = locationWords.some(word => pageText.includes(word)) || pageText.includes(locationLower);
+  
+  // Considera più affidabile se menzionato in sezioni rilevanti
+  const mentionsLocation = mentionsInRelevantSections || (allTextMentions && !pageText.includes('articolo') && !pageText.includes('blog'));
 
   // Cerca pagine locali (più flessibile)
   const hasLocalPages =
@@ -276,7 +338,7 @@ const analyzeLocalSeo = (
     ["localbusiness", "restaurant", "foodestablishment", "organization", "store", "place"].includes(type)
   );
 
-  console.log('🏢 Local SEO Analysis:', {
+  logger.debug('Local SEO Analysis completed', {
     location,
     napConsistency,
     mentionsLocation,
@@ -316,4 +378,5 @@ export const runHtmlAnalysis = async (
     local,
   };
 };
+
 

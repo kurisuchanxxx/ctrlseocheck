@@ -354,6 +354,59 @@ export default function DetailedResults({ analysis }: DetailedResultsProps) {
           </div>
         )}
       </div>
+
+      <div className="bg-white rounded-lg shadow-lg p-6 border-2 border-orange-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-dark">Off-Page SEO</h3>
+          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+            Stime Indicative
+          </span>
+        </div>
+        
+        {/* Disclaimer importante */}
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <span className="text-yellow-600 font-bold text-lg">⚠️</span>
+            <div className="text-sm text-yellow-800">
+              <p className="font-semibold mb-1">Dati Stimati, Non Reali</p>
+              <p className="text-xs">
+                I dati Off-Page SEO (Domain Authority, Backlinks, Directory Listings) sono <strong>stime basate su algoritmi interni</strong>, 
+                non valori reali verificati. Per dati accurati, utilizza strumenti professionali come Ahrefs, SEMrush o Moz.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-3 bg-gray-50 rounded">
+            <div className="text-sm font-medium text-gray-700 mb-2">Domain Authority</div>
+            <div className="text-2xl font-bold text-orange-600">{analysis.offPage.domainAuthority}/100</div>
+            <div className="text-xs text-gray-500 mt-1">Stima indicativa</div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded">
+            <div className="text-sm font-medium text-gray-700 mb-2">Backlinks Stimati</div>
+            <div className="text-2xl font-bold text-orange-600">{analysis.offPage.backlinks}</div>
+            <div className="text-xs text-gray-500 mt-1">Stima indicativa</div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded">
+            <div className="text-sm font-medium text-gray-700 mb-2">Directory Listings</div>
+            <div className="text-2xl font-bold text-orange-600">{analysis.offPage.directoryListings}</div>
+            <div className="text-xs text-gray-500 mt-1">Stima indicativa</div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded">
+            <div className="text-sm font-medium text-gray-700 mb-2">Google Business Profile</div>
+            <div className="flex items-center gap-2">
+              {analysis.local.googleBusiness ? (
+                <CheckCircleIcon className="h-5 w-5 text-green-500" />
+              ) : (
+                <XCircleIcon className="h-5 w-5 text-red-500" />
+              )}
+              <span className="text-sm">{analysis.local.googleBusiness ? 'Presente' : 'Non rilevato'}</span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Stima basata su schema</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
